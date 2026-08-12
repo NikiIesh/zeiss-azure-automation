@@ -1,6 +1,6 @@
-# User Guide — Zeiss Work Platform API
+# Work Platform API — User Guide
 
-Welcome! This guide explains how to access and interact with the Zeiss Work Platform API.
+This guide explains how to interact with the Work Platform API.
 
 ---
 
@@ -8,27 +8,14 @@ Welcome! This guide explains how to access and interact with the Zeiss Work Plat
 
 | Environment | Base URL | Deployment |
 |-------------|----------|------------|
-| **Dev** | `https://ca-zeiss-work-dev.wittymeadow-e54dc6a8.eastus.azurecontainerapps.io` | Auto-deploys on every push to `main` |
+| **Dev** | Shared separately (see email) | Auto-deploys on every push to `main` |
 | **Prod** | Deployed after manual approval in GitHub Actions | Requires reviewer sign-off |
 
 ---
 
-## Your Access
+## API Base URL
 
-| Detail | Value |
-|--------|-------|
-| **Your Account** | `yash042@gmail.com` |
-| **Access Level** | API access (public HTTPS, no auth required) |
-
-> The API is publicly accessible over HTTPS — no login required to call the endpoints. Anyone with the URL can read and submit work items.
-
----
-
-## API Base URL (Dev — Live Now)
-
-```
-https://ca-zeiss-work-dev.wittymeadow-e54dc6a8.eastus.azurecontainerapps.io
-```
+> The base URL is shared separately via email. Replace `BASE` in all examples below with the URL you received.
 
 ---
 
@@ -37,7 +24,7 @@ https://ca-zeiss-work-dev.wittymeadow-e54dc6a8.eastus.azurecontainerapps.io
 ### 1. Health Check
 
 ```bash
-BASE="https://ca-zeiss-work-dev.wittymeadow-e54dc6a8.eastus.azurecontainerapps.io"
+BASE="<URL from email>"
 
 # Liveness — is the app running?
 curl $BASE/health/live
@@ -53,7 +40,7 @@ curl $BASE/health/ready
 ### 2. Create a Work Item
 
 ```bash
-BASE="https://ca-zeiss-work-dev.wittymeadow-e54dc6a8.eastus.azurecontainerapps.io"
+BASE="<URL from email>"
 
 curl -X POST $BASE/api/work \
   -H "Content-Type: application/json" \
@@ -82,7 +69,7 @@ curl -X POST $BASE/api/work \
 ### 3. Get All Work Items
 
 ```bash
-BASE="https://ca-zeiss-work-dev.wittymeadow-e54dc6a8.eastus.azurecontainerapps.io"
+BASE="<URL from email>"
 
 curl $BASE/api/work
 ```
@@ -105,7 +92,7 @@ curl $BASE/api/work
 ### 4. Get a Single Work Item
 
 ```bash
-BASE="https://ca-zeiss-work-dev.wittymeadow-e54dc6a8.eastus.azurecontainerapps.io"
+BASE="<URL from email>"
 
 curl $BASE/api/work/e7767131
 ```
@@ -118,17 +105,17 @@ Returns `404 Not Found` if the ID doesn't exist.
 
 ---
 
-## What You Can View in Azure Portal
+## Azure Portal Observability
 
 After signing in to [portal.azure.com](https://portal.azure.com):
 
 ### 1. Resource Group Overview
-Navigate to resource group `rg-zeiss-work` to see all deployed Azure resources:
-- Container Apps Environment + Container App (`ca-zeiss-work-dev`)
-- Service Bus namespace `sb-hz4xcf2fyukki` + queue `work-queue`
-- Key Vault (stores `ServiceBusConnectionString` secret)
+Navigate to the resource group to see all deployed Azure resources:
+- Container Apps Environment + Container App
+- Service Bus namespace + queue `work-queue`
+- Key Vault
 - Application Insights + Log Analytics Workspace
-- User-Assigned Managed Identity (`id-zeiss-work-dev`)
+- User-Assigned Managed Identity
 
 ### 2. Application Insights
 Go to **Application Insights** → **Live Metrics** to see real-time:
@@ -140,7 +127,6 @@ Go to **Application Insights** → **Live Metrics** to see real-time:
 Go to **Container App** → **Log stream** to see live application logs, or use **Log Analytics** to query:
 ```kusto
 ContainerAppConsoleLogs_CL
-| where ContainerAppName_s == "ca-zeiss-work-dev"
 | order by TimeGenerated desc
 | take 50
 ```
@@ -158,7 +144,7 @@ Go to **Service Bus** → **Queues** → `work-queue` → **Metrics** to see:
 Run all endpoints in sequence:
 
 ```bash
-BASE="https://ca-zeiss-work-dev.wittymeadow-e54dc6a8.eastus.azurecontainerapps.io"
+BASE="<URL from email>"
 
 echo "--- Health Check ---"
 curl -s $BASE/health/ready
