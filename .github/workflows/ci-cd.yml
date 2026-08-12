@@ -81,6 +81,10 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Compute lowercase image ref
+        id: img
+        run: echo "ref=$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]'):${{ github.sha }}" >> $GITHUB_OUTPUT
+
       - name: Deploy Infrastructure (Dev)
         uses: azure/arm-deploy@v2
         with:
@@ -90,7 +94,7 @@ jobs:
           parameters: >
             environment=dev
             baseName=zeiss-work
-            containerImage=${{ env.IMAGE_NAME }}:${{ github.sha }}
+            containerImage=${{ steps.img.outputs.ref }}
             ghcrUsername=${{ github.actor }}
             ghcrPassword=${{ secrets.GHCR_PAT }}
           failOnStdErr: false
@@ -113,6 +117,10 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Compute lowercase image ref
+        id: img
+        run: echo "ref=$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]'):${{ github.sha }}" >> $GITHUB_OUTPUT
+
       - name: Deploy Infrastructure (Prod)
         uses: azure/arm-deploy@v2
         with:
@@ -122,7 +130,7 @@ jobs:
           parameters: >
             environment=prod
             baseName=zeiss-work
-            containerImage=${{ env.IMAGE_NAME }}:${{ github.sha }}
+            containerImage=${{ steps.img.outputs.ref }}
             ghcrUsername=${{ github.actor }}
             ghcrPassword=${{ secrets.GHCR_PAT }}
           failOnStdErr: false
