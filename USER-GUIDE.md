@@ -4,25 +4,31 @@ Welcome! This guide explains how to access and interact with the Zeiss Work Plat
 
 ---
 
+## Environments
+
+| Environment | Base URL | Deployment |
+|-------------|----------|------------|
+| **Dev** | `https://ca-zeiss-work-dev.wittymeadow-e54dc6a8.eastus.azurecontainerapps.io` | Auto-deploys on every push to `main` |
+| **Prod** | Deployed after manual approval in GitHub Actions | Requires reviewer sign-off |
+
+---
+
 ## Your Access
 
 | Detail | Value |
 |--------|-------|
 | **Your Account** | `yash042@gmail.com` |
-| **Access Level** | **Reader** on Azure Resource Group + API access |
-| **IAM Role** | Azure RBAC `Reader` — view all resources, logs, and metrics |
+| **Access Level** | API access (public HTTPS, no auth required) |
 
-> Your Gmail account has been invited as a **Guest User** in Azure Active Directory with **Reader** access to the resource group. You can view infrastructure, logs, and Application Insights — but cannot modify resources.
+> The API is publicly accessible over HTTPS — no login required to call the endpoints. Anyone with the URL can read and submit work items.
 
 ---
 
-## API Base URL
+## API Base URL (Dev — Live Now)
 
 ```
-https://ca-zeiss-work-dev.<region>.azurecontainerapps.io
+https://ca-zeiss-work-dev.wittymeadow-e54dc6a8.eastus.azurecontainerapps.io
 ```
-
-> The exact URL will be shared separately after deployment. Replace `<region>` with the deployed region (e.g., `westeurope`).
 
 ---
 
@@ -31,11 +37,13 @@ https://ca-zeiss-work-dev.<region>.azurecontainerapps.io
 ### 1. Health Check
 
 ```bash
+BASE="https://ca-zeiss-work-dev.wittymeadow-e54dc6a8.eastus.azurecontainerapps.io"
+
 # Liveness — is the app running?
-curl https://<APP_URL>/health/live
+curl $BASE/health/live
 
 # Readiness — is Service Bus connected?
-curl https://<APP_URL>/health/ready
+curl $BASE/health/ready
 ```
 
 **Expected response**: `200 OK` with `Healthy`
@@ -45,7 +53,9 @@ curl https://<APP_URL>/health/ready
 ### 2. Create a Work Item
 
 ```bash
-curl -X POST https://<APP_URL>/api/work \
+BASE="https://ca-zeiss-work-dev.wittymeadow-e54dc6a8.eastus.azurecontainerapps.io"
+
+curl -X POST $BASE/api/work \
   -H "Content-Type: application/json" \
   -d '{"description": "My first work item"}'
 ```
@@ -53,10 +63,10 @@ curl -X POST https://<APP_URL>/api/work \
 **Expected response** (`202 Accepted`):
 ```json
 {
-  "id": "a1b2c3d4",
+  "id": "e7767131",
   "description": "My first work item",
   "status": "Queued",
-  "createdAt": "2026-08-12T10:00:00Z",
+  "createdAt": "2026-08-12T14:38:47.4257988Z",
   "processedAt": null
 }
 ```
@@ -64,7 +74,7 @@ curl -X POST https://<APP_URL>/api/work \
 **What happens behind the scenes**:
 1. The API stores the work item in memory
 2. A message is enqueued to Azure Service Bus (`work-queue`)
-3. The background worker picks it up and processes it asynchronously
+3. The background worker picks it up within ~1 second and processes it
 4. The item's status changes from `Queued` → `Processed`
 
 ---
@@ -72,18 +82,20 @@ curl -X POST https://<APP_URL>/api/work \
 ### 3. Get All Work Items
 
 ```bash
-curl https://<APP_URL>/api/work
+BASE="https://ca-zeiss-work-dev.wittymeadow-e54dc6a8.eastus.azurecontainerapps.io"
+
+curl $BASE/api/work
 ```
 
 **Expected response** (`200 OK`):
 ```json
 [
   {
-    "id": "a1b2c3d4",
+    "id": "e7767131",
     "description": "My first work item",
     "status": "Processed",
-    "createdAt": "2026-08-12T10:00:00Z",
-    "processedAt": "2026-08-12T10:00:01Z"
+    "createdAt": "2026-08-12T14:38:47.4257988Z",
+    "processedAt": "2026-08-12T14:38:48.1459568Z"
   }
 ]
 ```
@@ -93,26 +105,30 @@ curl https://<APP_URL>/api/work
 ### 4. Get a Single Work Item
 
 ```bash
-curl https://<APP_URL>/api/work/a1b2c3d4
+BASE="https://ca-zeiss-work-dev.wittymeadow-e54dc6a8.eastus.azurecontainerapps.io"
+
+curl $BASE/api/work/e7767131
 ```
 
 **Expected response** (`200 OK`): The single work item JSON.
 
 Returns `404 Not Found` if the ID doesn't exist.
 
+> **Note:** The root path `/` returns `404` — this is expected. The app has no browser UI; use the endpoints above.
+
 ---
 
 ## What You Can View in Azure Portal
 
-After signing in to [portal.azure.com](https://portal.azure.com) with `yash042@gmail.com`:
+After signing in to [portal.azure.com](https://portal.azure.com):
 
 ### 1. Resource Group Overview
-Navigate to the resource group to see all deployed Azure resources:
-- Container App (running the API)
-- Service Bus namespace + queue
-- Key Vault (secrets)
-- Application Insights
-- Log Analytics Workspace
+Navigate to resource group `rg-zeiss-work` to see all deployed Azure resources:
+- Container Apps Environment + Container App (`ca-zeiss-work-dev`)
+- Service Bus namespace `sb-hz4xcf2fyukki` + queue `work-queue`
+- Key Vault (stores `ServiceBusConnectionString` secret)
+- Application Insights + Log Analytics Workspace
+- User-Assigned Managed Identity (`id-zeiss-work-dev`)
 
 ### 2. Application Insights
 Go to **Application Insights** → **Live Metrics** to see real-time:
@@ -142,29 +158,29 @@ Go to **Service Bus** → **Queues** → `work-queue` → **Metrics** to see:
 Run all endpoints in sequence:
 
 ```bash
-APP_URL="https://ca-zeiss-work-dev.<region>.azurecontainerapps.io"
+BASE="https://ca-zeiss-work-dev.wittymeadow-e54dc6a8.eastus.azurecontainerapps.io"
 
 echo "--- Health Check ---"
-curl -s $APP_URL/health/live
+curl -s $BASE/health/ready
 echo
 
 echo "--- Create Work Item 1 ---"
-curl -s -X POST $APP_URL/api/work \
+curl -s -X POST $BASE/api/work \
   -H "Content-Type: application/json" \
-  -d '{"description": "Review infrastructure code"}'
+  -d '{"description": "Review infrastructure code"}' | python3 -m json.tool
 echo
 
 echo "--- Create Work Item 2 ---"
-curl -s -X POST $APP_URL/api/work \
+curl -s -X POST $BASE/api/work \
   -H "Content-Type: application/json" \
-  -d '{"description": "Check observability setup"}'
+  -d '{"description": "Check observability setup"}' | python3 -m json.tool
 echo
 
 echo "--- Wait for processing ---"
 sleep 3
 
 echo "--- Get All Items ---"
-curl -s $APP_URL/api/work | python3 -m json.tool
+curl -s $BASE/api/work | python3 -m json.tool
 ```
 
 ---
@@ -173,7 +189,8 @@ curl -s $APP_URL/api/work | python3 -m json.tool
 
 | Issue | Solution |
 |-------|----------|
-| `502 Bad Gateway` | Container is starting up (cold start ~5-10s). Wait and retry |
+| First request is slow (~5-10s) | Container scales to zero when idle (`minReplicas=0`). Wait for cold start and retry |
 | Items stay `Queued` | Background worker may be restarting. Check Container App logs |
-| Can't access Azure Portal | Ensure you accepted the Azure AD guest invitation sent to `yash042@gmail.com` |
-| `404` on `/api/work/{id}` | The ID doesn't exist. Items are in-memory and reset on container restart |
+| `404` on root `/` | Expected — the app has no root route. Use `/api/work` or `/health/live` |
+| `404` on `/api/work/{id}` | The ID doesn't exist, or the container restarted (items are in-memory only) |
+| `503` or timeout | Container App is scaling up. Retry after ~10 seconds |
