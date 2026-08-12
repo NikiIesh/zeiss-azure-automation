@@ -44,16 +44,6 @@ module serviceBus 'modules/service-bus.bicep' = {
   }
 }
 
-// Key Vault
-module keyVault 'modules/key-vault.bicep' = {
-  name: 'keyvault-${environment}'
-  params: {
-    name: 'kv-${uniqueSuffix}'
-    location: location
-    serviceBusConnectionString: serviceBus.outputs.connectionString
-  }
-}
-
 // Container Apps
 module containerApps 'modules/container-apps.bicep' = {
   name: 'containerapps-${environment}'
@@ -64,20 +54,10 @@ module containerApps 'modules/container-apps.bicep' = {
     logAnalyticsWorkspaceId: monitoring.outputs.workspaceId
     logAnalyticsSharedKey: monitoring.outputs.workspaceKey
     appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
-    serviceBusNamespace: serviceBus.outputs.namespaceName
+    serviceBusConnectionString: serviceBus.outputs.connectionString
     containerImage: containerImage
     ghcrUsername: ghcrUsername
     ghcrPassword: ghcrPassword
-  }
-}
-
-// Grant Container App's Managed Identity access to Service Bus and Key Vault
-module rbac 'modules/rbac.bicep' = {
-  name: 'rbac-${environment}'
-  params: {
-    serviceBusNamespaceName: serviceBus.outputs.namespaceName
-    keyVaultName: keyVault.outputs.name
-    principalId: containerApps.outputs.identityPrincipalId
   }
 }
 

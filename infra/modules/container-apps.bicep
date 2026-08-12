@@ -17,8 +17,9 @@ param logAnalyticsSharedKey string
 @description('Application Insights connection string')
 param appInsightsConnectionString string
 
-@description('Service Bus fully qualified namespace (e.g., sb-xxx.servicebus.windows.net)')
-param serviceBusNamespace string
+@description('Service Bus connection string')
+@secure()
+param serviceBusConnectionString string
 
 @description('Container image')
 param containerImage string
@@ -48,9 +49,6 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: appName
   location: location
-  identity: {
-    type: 'SystemAssigned'
-  }
   properties: {
     managedEnvironmentId: environment.id
     configuration: {
@@ -89,8 +87,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
               value: appInsightsConnectionString
             }
             {
-              name: 'ServiceBus__Namespace'
-              value: '${serviceBusNamespace}.servicebus.windows.net'
+              name: 'ServiceBus__ConnectionString'
+              value: serviceBusConnectionString
             }
           ]
           probes: [
@@ -122,4 +120,3 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 }
 
 output fqdn string = containerApp.properties.configuration.ingress.fqdn
-output identityPrincipalId string = containerApp.identity.principalId
