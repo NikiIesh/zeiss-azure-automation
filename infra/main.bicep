@@ -71,12 +71,16 @@ module rbac 'modules/rbac.bicep' = {
 }
 
 // Container Apps (depends on RBAC so identity has KV access at provisioning time)
+// Prod reuses the dev Container Apps Environment (subscription limit: 1 env per region)
+var devEnvResourceId = resourceId('Microsoft.App/managedEnvironments', 'cae-${baseName}-dev')
+
 module containerApps 'modules/container-apps.bicep' = {
   name: 'containerapps-${environment}'
   dependsOn: [rbac]
   params: {
     envName: 'cae-${suffix}'
     appName: 'ca-${suffix}'
+    existingManagedEnvironmentId: environment == 'prod' ? devEnvResourceId : ''
     location: location
     logAnalyticsWorkspaceId: monitoring.outputs.workspaceId
     logAnalyticsSharedKey: monitoring.outputs.workspaceKey

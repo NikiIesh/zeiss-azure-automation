@@ -40,9 +40,13 @@ param managedIdentityId string
 @description('User-assigned Managed Identity client ID')
 param managedIdentityClientId string
 
+@description('Resource ID of an existing Container Apps Environment to reuse (prod reuses dev env)')
+param existingManagedEnvironmentId string = ''
+
 var kvUri = 'https://${keyVaultName}${az.environment().suffixes.keyvaultDns}/'
 
-resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
+// Only created for dev; prod passes existingManagedEnvironmentId instead
+resource newEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = if (empty(existingManagedEnvironmentId)) {
   name: envName
   location: location
   properties: {
@@ -56,6 +60,8 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
+var resolvedEnvId = empty(existingManagedEnvironmentId) ? newEnvironment.id : existingManagedEnvironmentId
+
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: appName
   location: location
@@ -66,7 +72,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     }
   }
   properties: {
-    managedEnvironmentId: environment.id
+    managedEnvironmentId: resolvedEnvId
     configuration: {
       ingress: {
         external: true
