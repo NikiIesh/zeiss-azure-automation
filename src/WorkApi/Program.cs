@@ -1,5 +1,8 @@
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using System.Text.Json;
 using WorkApi.Models;
 using WorkApi.Services;
 
@@ -36,9 +39,27 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+static Task WriteHealthJson(HttpContext ctx, HealthReport report)
+{
+    ctx.Response.ContentType = "application/json";
+    var payload = new
+    {
+        status = report.Status.ToString(),
+        totalDurationMs = Math.Round(report.TotalDuration.TotalMilliseconds, 1),
+        checks = report.Entries.Select(e => new
+        {
+            name = e.Key,
+            status = e.Value.Status.ToString(),
+            description = e.Value.Description,
+            durationMs = Math.Round(e.Value.Duration.TotalMilliseconds, 1)
+        })
+    };
+    return ctx.Response.WriteAsync(JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true }));
+}
+
 // Health probes
-app.MapHealthChecks("/health/live", new() { Predicate = _ => false }); // liveness: always 200
-app.MapHealthChecks("/health/ready"); // readiness: checks Service Bus
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false, ResponseWriter = WriteHealthJson });
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { ResponseWriter = WriteHealthJson });
 
 // POST /api/work — enqueue a work item
 app.MapPost("/api/work", async (CreateWorkRequest request, ServiceBusPublisher publisher, WorkItemStore store) =>
