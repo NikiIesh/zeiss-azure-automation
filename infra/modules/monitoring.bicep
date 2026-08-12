@@ -29,6 +29,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
 }
 
 output workspaceId string = workspace.id
+#disable-next-line outputs-should-not-contain-secrets
 output workspaceKey string = workspace.listKeys().primarySharedKey
 output appInsightsConnectionString string = appInsights.properties.ConnectionString
 output appInsightsName string = appInsights.name
