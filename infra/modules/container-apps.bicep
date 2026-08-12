@@ -31,9 +31,6 @@ param ghcrUsername string
 @secure()
 param ghcrPassword string
 
-@description('Key Vault name')
-param keyVaultName string
-
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: envName
   location: location
@@ -70,21 +67,12 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           passwordSecretRef: 'ghcr-password'
         }
       ]
-      secrets: concat(
-        empty(ghcrPassword) ? [] : [
-          {
-            name: 'ghcr-password'
-            value: ghcrPassword
-          }
-        ],
-        [
-          {
-            name: 'sb-connection-string'
-            keyVaultUrl: 'https://${keyVaultName}${az.environment().suffixes.keyvaultDns}/secrets/ServiceBusConnectionString'
-            identity: 'system'
-          }
-        ]
-      )
+      secrets: empty(ghcrPassword) ? [] : [
+        {
+          name: 'ghcr-password'
+          value: ghcrPassword
+        }
+      ]
     }
     template: {
       containers: [

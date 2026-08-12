@@ -68,7 +68,6 @@ module containerApps 'modules/container-apps.bicep' = {
     containerImage: containerImage
     ghcrUsername: ghcrUsername
     ghcrPassword: ghcrPassword
-    keyVaultName: keyVault.outputs.name
   }
 }
 
