@@ -24,6 +24,12 @@ param ghcrPassword string = ''
 var suffix = '${baseName}-${environment}'
 var uniqueSuffix = uniqueString(resourceGroup().id, suffix)
 
+// User-assigned Managed Identity (created first so RBAC can be granted before Container App)
+resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: 'id-${suffix}'
+  location: location
+}
+
 // Log Analytics Workspace
 module monitoring 'modules/monitoring.bicep' = {
   name: 'monitoring-${environment}'
@@ -44,9 +50,30 @@ module serviceBus 'modules/service-bus.bicep' = {
   }
 }
 
-// Container Apps
+// Key Vault
+module keyVault 'modules/key-vault.bicep' = {
+  name: 'keyvault-${environment}'
+  params: {
+    name: 'kv-${uniqueSuffix}'
+    location: location
+    serviceBusConnectionString: serviceBus.outputs.connectionString
+  }
+}
+
+// Grant Managed Identity access to Service Bus and Key Vault
+module rbac 'modules/rbac.bicep' = {
+  name: 'rbac-${environment}'
+  params: {
+    serviceBusNamespaceName: serviceBus.outputs.namespaceName
+    keyVaultName: keyVault.outputs.name
+    principalId: managedIdentity.properties.principalId
+  }
+}
+
+// Container Apps (depends on RBAC so identity has KV access at provisioning time)
 module containerApps 'modules/container-apps.bicep' = {
   name: 'containerapps-${environment}'
+  dependsOn: [rbac]
   params: {
     envName: 'cae-${suffix}'
     appName: 'ca-${suffix}'
@@ -54,10 +81,13 @@ module containerApps 'modules/container-apps.bicep' = {
     logAnalyticsWorkspaceId: monitoring.outputs.workspaceId
     logAnalyticsSharedKey: monitoring.outputs.workspaceKey
     appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
-    serviceBusConnectionString: serviceBus.outputs.connectionString
+    serviceBusNamespace: serviceBus.outputs.namespaceName
     containerImage: containerImage
     ghcrUsername: ghcrUsername
     ghcrPassword: ghcrPassword
+    keyVaultName: keyVault.outputs.name
+    managedIdentityId: managedIdentity.id
+    managedIdentityClientId: managedIdentity.properties.clientId
   }
 }
 

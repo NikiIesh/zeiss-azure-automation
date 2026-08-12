@@ -17,9 +17,8 @@ param logAnalyticsSharedKey string
 @description('Application Insights connection string')
 param appInsightsConnectionString string
 
-@description('Service Bus connection string')
-@secure()
-param serviceBusConnectionString string
+@description('Service Bus namespace name')
+param serviceBusNamespace string
 
 @description('Container image')
 param containerImage string
@@ -31,6 +30,17 @@ param ghcrUsername string
 @description('ghcr.io PAT token')
 @secure()
 param ghcrPassword string
+
+@description('Key Vault name')
+param keyVaultName string
+
+@description('User-assigned Managed Identity resource ID')
+param managedIdentityId string
+
+@description('User-assigned Managed Identity client ID')
+param managedIdentityClientId string
+
+var kvUri = 'https://${keyVaultName}${az.environment().suffixes.keyvaultDns}/'
 
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: envName
@@ -49,6 +59,12 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: appName
   location: location
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${managedIdentityId}': {}
+    }
+  }
   properties: {
     managedEnvironmentId: environment.id
     configuration: {
@@ -65,12 +81,21 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           passwordSecretRef: 'ghcr-password'
         }
       ]
-      secrets: empty(ghcrPassword) ? [] : [
-        {
-          name: 'ghcr-password'
-          value: ghcrPassword
-        }
-      ]
+      secrets: concat(
+        empty(ghcrPassword) ? [] : [
+          {
+            name: 'ghcr-password'
+            value: ghcrPassword
+          }
+        ],
+        [
+          {
+            name: 'sb-connection-string'
+            keyVaultUrl: '${kvUri}secrets/ServiceBusConnectionString'
+            identity: managedIdentityId
+          }
+        ]
+      )
     }
     template: {
       containers: [
@@ -87,8 +112,16 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
               value: appInsightsConnectionString
             }
             {
+              name: 'AZURE_CLIENT_ID'
+              value: managedIdentityClientId
+            }
+            {
+              name: 'ServiceBus__Namespace'
+              value: '${serviceBusNamespace}.servicebus.windows.net'
+            }
+            {
               name: 'ServiceBus__ConnectionString'
-              value: serviceBusConnectionString
+              secretRef: 'sb-connection-string'
             }
           ]
           probes: [
