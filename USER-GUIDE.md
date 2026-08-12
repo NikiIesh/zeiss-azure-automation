@@ -171,6 +171,29 @@ curl -s $BASE/api/work | python3 -m json.tool
 
 ---
 
+## Verifying via Azure Portal
+
+After making a few API calls, here's where to confirm things are working:
+
+**[Transaction Search](https://portal.azure.com/#resource/subscriptions/4a8950b3-c5c7-48de-9bee-2283594e76bd/resourceGroups/rg-zeiss-work/providers/microsoft.insights/components/ai-zeiss-work-dev/searchV1)**
+Filter by the last 15 minutes. You'll see each request, its duration, and linked dependency calls to Service Bus — click any entry to drill into the full trace.
+
+**[Live Metrics](https://portal.azure.com/#resource/subscriptions/4a8950b3-c5c7-48de-9bee-2283594e76bd/resourceGroups/rg-zeiss-work/providers/microsoft.insights/components/ai-zeiss-work-dev/quickPulse)**
+Real-time view of incoming requests, failures, and dependency calls as they happen.
+
+**[Log Analytics — Logs](https://portal.azure.com/#resource/subscriptions/4a8950b3-c5c7-48de-9bee-2283594e76bd/resourceGroups/rg-zeiss-work/providers/Microsoft.OperationalInsights/workspaces/log-zeiss-work-dev/logs)**
+Run this query to see container output:
+```kusto
+ContainerAppConsoleLogs_CL
+| order by TimeGenerated desc
+| take 50
+```
+
+**[Service Bus Queue Metrics](https://portal.azure.com/#resource/subscriptions/4a8950b3-c5c7-48de-9bee-2283594e76bd/resourceGroups/rg-zeiss-work/providers/Microsoft.ServiceBus/namespaces/sb-hz4xcf2fyukki/overview)**
+Check that **Incoming Messages** and **Outgoing Messages** both incremented after a POST. **Active Messages** should return to `0` once the worker picks up the message (~1–2 seconds).
+
+---
+
 ## Troubleshooting
 
 | Issue | Solution |
