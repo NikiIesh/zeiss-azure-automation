@@ -63,7 +63,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         transport: 'http'
         allowInsecure: false
       }
-      registries: empty(ghcrUsername) ? [] : [
+      registries: (empty(ghcrUsername) || empty(ghcrPassword)) ? [] : [
         {
           server: 'ghcr.io'
           username: ghcrUsername
